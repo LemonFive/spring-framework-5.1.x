@@ -1199,7 +1199,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		}
 
 		// Candidate constructors for autowiring?
-		// 第二次调用后置处理器（推断构造方法） 若为默认构造方法则返回null
+		// 第二次调用后置处理器（第一次推断构造方法） 若为默认构造方法则返回null
 		Constructor<?>[] ctors = determineConstructorsFromBeanPostProcessors(beanClass, beanName);
 		if (ctors != null || mbd.getResolvedAutowireMode() == AUTOWIRE_CONSTRUCTOR ||
 				mbd.hasConstructorArgumentValues() || !ObjectUtils.isEmpty(args)) {
@@ -1278,10 +1278,16 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	 * @see org.springframework.beans.factory.config.SmartInstantiationAwareBeanPostProcessor#determineCandidateConstructors
 	 *
 	 * 推断构造方法，和spring注入模型有关   检查类中所有构造方法——如果推断为默认的无参构造方法则返回null
-	 * 情况1 注入模型为手动装配@Compoment，则为默认构造方法
-	 * 情况2 在构造方法上添加@Autowired，指明使用该构造方法，注：不能添加两个@Autowired标签抛异常。
-	 * 情况3 自动装配，注入模型那4种，会选择参数最长的构造方法。
-	 * 情况4 多个构造方法，但不明确（没在构造方法上添加@Autowired），则返回null 还用磨人的
+	 * 自动注入
+	 * 情况1 注入模型那4种，会选择参数最长的构造方法。
+	 * 手动注入
+	 * 情况2 没有提供构造方法，返回null，
+	 * 情况3 提供了默认的构造方法，返回null
+	 * 情况4 提供了多个构造方法，没有加任何注解，返回null，迷茫不知道该用哪个。
+	 * 情况5 提供了多个构造方法，其中一个添加@Autowired（true），返回这个构造方法
+	 * 情况6 提供了多个构造方法，其中多个添加@Autowired（true），抛异常，不知道用哪个。
+	 * 情况7 提供了多个构造方法，其中多个添加@Autowired（false），返回多个构造方法，等再次推断。
+	 * 注入模型为手动装配@Compoment，则为默认构造方法
 	 */
 	@Nullable
 	protected Constructor<?>[] determineConstructorsFromBeanPostProcessors(@Nullable Class<?> beanClass, String beanName)
@@ -1363,6 +1369,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	protected BeanWrapper autowireConstructor(
 			String beanName, RootBeanDefinition mbd, @Nullable Constructor<?>[] ctors, @Nullable Object[] explicitArgs) {
 
+		// 第二次推断构造方法
 		return new ConstructorResolver(this).autowireConstructor(beanName, mbd, ctors, explicitArgs);
 	}
 
